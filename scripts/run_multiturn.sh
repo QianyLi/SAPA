@@ -1,0 +1,15 @@
+python run.py \
+--env pwab \
+--model gpt-4o-mini \
+--user_mode no \
+--user_model gpt-4o-mini \
+--agent_strategy rise \
+--agent_memory taskspe_rise \
+--memory_length 100 \
+--task_split test \
+--max_concurrency 5 \
+--max_steps 1 \
+--tts_n 10 \
+--start_index 0 \
+--end_index -1 \
+--sapa_function_file "${FUNCTION_FILE:-SAPA/output/res/function_test_res.json}"

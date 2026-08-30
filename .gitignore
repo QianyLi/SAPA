@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.coverage*
+htmlcov/
+
+# Virtual environments and local configuration
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors and OS files
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Experiment tracking and logs
+wandb/
+logs/
+*.log
+
+# Local benchmark/training data and generated artifacts.
+# Download or regenerate these files; do not commit multi-GB datasets,
+# indexes, checkpoints, or evaluation dumps to the source repository.
+SAPA/data/
+SAPA/output/
+SAPA/output_process/
+SAPA/judge_outputs/
+SAPA/bert_reranker_save/
+SAPA/listwise_reranker_best/
+SAPA/wandb/
+ablation/data/
+ablation/results/
+ablation/STATUS.md
+PersonalWAB/envs/pwab/functions/search/
+PersonalWAB/envs/pwab/functions/recommender/checkpoint/
+PersonalWAB/envs/pwab/functions/data/Products/*.jsonl
+PersonalWAB/envs/pwab/data/*.json
+PersonalWAB/envs/pwab/data/*.jsonl
+
+# Generated search/recommendation outputs
+**/*_results*.json
+**/*_res*.json
+**/*.npy
+**/*.pkl
+**/*.index
+**/*.safetensors
+**/checkpoint-*/
+
+# LaTeX build products (keep .tex, .bib, figures, and style files)
+paper/latex/*.aux
+paper/latex/*.bbl
+paper/latex/*.blg
+paper/latex/*.fdb_latexmk
+paper/latex/*.fls
+paper/latex/*.log
+paper/latex/*.out
+paper/latex/*.synctex.gz
+paper/latex/*.toc
+paper/latex/*.xref
+paper/latex/*.4ct
+paper/latex/*.tmp
+paper/latex/*.xdv
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/SAPA.zip
+recall_exp4_multi.jsonl
+paper/*.log
+
+# Local duplicate/copy explicitly kept out of the public repository
+SAPA_copy/

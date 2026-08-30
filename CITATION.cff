@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+title: "SAPA: A Situation-Augmented Personalized Agent for the Web"
+message: "If you use SAPA or this source release, please cite the accompanying paper."
+type: software
+authors:
+  - family-names: Li
+    given-names: Qianyue
+  - family-names: Ji
+    given-names: Bin
+  - family-names: Liu
+    given-names: Xiaodong
+  - family-names: Li
+    given-names: Shasha
+  - family-names: Li
+    given-names: Xiaopeng
+  - family-names: Wang
+    given-names: Yueyu
+  - family-names: Hong
+    given-names: Xinran
+  - family-names: Ma
+    given-names: Jun
+  - family-names: Yu
+    given-names: Jie
+license: CC-BY-NC-4.0
