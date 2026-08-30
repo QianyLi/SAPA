@@ -32,10 +32,7 @@ The **PersonalWAB** benchmark includes:
 - **User Simulator**: Simulates interactions aligned with user profiles and historical behaviors.
 - **Evaluation Paradigms**:  Single-turn track tests for isolated tasks and multi-turn for more complex interactions.
 
-The dataset is expected under `PersonalWAB/envs/pwab/data/` at runtime. It is
-not included in the source-only release by default; download it from
-[the project page](https://hongrucai.github.io/PersonalWAB/download) and
-review its redistribution terms before publishing a mirror.
+The dataset is expected under `PersonalWAB/envs/pwab/data/`.
 
 ### Task Description
 
@@ -152,16 +149,16 @@ bash scripts/generate_function.sh
 accelerate launch test_llama_flow_recommend.py \
   --model_path output/sapa_param/<checkpoint> \
   --base_model "$PWAB_BASE_MODEL" \
-  --data_path data/best/pre_sft_data_k10_return1_top6_qwen25_prompt.json \
+  --data_path data/pre_sft_data.json \
   --tool_file output/res/function_test_res.json \
-  --res_file data/best/param_raw.json \
+  --res_file data/param_raw.json \
   --split test --test_on param --bf16 --batch_size 4 \
   --max_new_tokens 512 --memory_token_length 768
 
 export PWAB_BGE_INDEX="../PersonalWAB/envs/pwab/functions/search/faiss_dense_bge_m3.index"
 export PWAB_PRODUCTS_JSONL="../PersonalWAB/envs/pwab/functions/data/Products/all_products.jsonl"
-export PARAM_INPUT_FILE="data/best/param_raw.json"
-bash scripts/generate_param_laser.sh
+export PARAM_INPUT_FILE="data/param_raw.json"
+bash scripts/generate_param.sh
 ```
 
 Evaluate generated results from the repository root. Override paths when your
@@ -174,10 +171,6 @@ bash scripts/fast_test.sh \
   --all_products SAPA/data/all_products.json
 ```
 
-For the N-sample BGE-M3 + RRF experiment, use
-`python SAPA/laser_n10.py --help` and provide a local FAISS index, product
-corpus, parameter predictions, and output path.
-
 ### 5. Amazon transfer and ablation experiments
 
 The ablation scripts process Amazon Reviews 2023 subsets and require raw data
@@ -189,11 +182,6 @@ recipe is:
 bash ablation/run_pipeline.sh office
 # or: beauty / electronics
 ```
-
-This is a research recipe rather than a completely self-contained pipeline:
-the semantic-retrieval stage still requires the historical
-`run_baseline_search.py` helper. The vanilla parameter-preparation helper is
-available as `SAPA/prepare_param_data.py`.
 
 ## 🧠 SAPA implementation
 

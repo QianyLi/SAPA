@@ -82,3 +82,7 @@ paper/*.log
 
 # Local duplicate/copy explicitly kept out of the public repository
 SAPA_copy/
+
+/paper/
+/docs/
+/ablation/
