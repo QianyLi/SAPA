@@ -591,7 +591,7 @@ def main() -> None:
     parser.add_argument("--dpo-path", default="/tmp/param_test_res_dpo_review_rerun.json")
     parser.add_argument(
         "--reference-path",
-        default="SAPA/data/best/pre_sft_data_k10_return1_top6.json",
+        default="SAPA/data/pre_sft_data.json",
     )
     parser.add_argument(
         "--tasks-path",

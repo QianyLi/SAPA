@@ -112,7 +112,7 @@ def search_product_by_query(
     hit_before_rerank = 1 if target_asin and target_asin in docids_list else 0
 
     if not contents_list:
-        recall_log = os.getenv("PWAB_RECALL_LOG", "SAPA/data/best/recall_exp4_multi.jsonl")
+        recall_log = os.getenv("PWAB_RECALL_LOG", "SAPA/data/recall_exp4_multi.jsonl")
         os.makedirs(os.path.dirname(recall_log) or ".", exist_ok=True)
         with open(recall_log, "a", encoding="utf-8") as f:
             log_data = {

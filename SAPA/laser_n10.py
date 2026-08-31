@@ -11,10 +11,10 @@ uses get_recommendations_by_history's len==10 short-circuit).
 
 Usage:
   python SAPA/laser_n10.py \
-      --input_file        SAPA/data/best/param_data_k10_return1_top6.json \
+      --input_file        SAPA/data/param_data.json \
       --index_file        PersonalWAB/envs/pwab/functions/search/faiss_dense_bge_m3.index \
       --all_products_jsonl PersonalWAB/envs/pwab/functions/data/Products/all_products.jsonl \
-      --output_file       SAPA/data/best/param_data_k10_return1_top6_laser_n10.json \
+      --output_file       SAPA/data/param_data_laser_n10.json \
       --model_path        BAAI/bge-m3 \
       --top_k_per_seed    10 \
       --rrf_k             60 \

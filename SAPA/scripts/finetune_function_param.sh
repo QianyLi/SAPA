@@ -2,7 +2,7 @@
 set -euo pipefail
 
 deepspeed --include="localhost:${GPUS:-0,2,3,4}" --master_port="${MASTER_PORT:-29997}" finetune_llama.py \
-    --data_path "${DATA_PATH:-data/best/pre_sft_data_k10_return1_top6_qwen25_prompt.json}" \
+    --data_path "${DATA_PATH:-data/pre_sft_data.json}" \
     --function_data_path "${FUNCTION_DATA_PATH:-data/function_data.json}" \
     --output_dir "${OUTPUT_DIR:-output/sapa_param}" \
     --model_name "${BASE_MODEL:-meta-llama/Llama-2-7b-chat-hf}" \
