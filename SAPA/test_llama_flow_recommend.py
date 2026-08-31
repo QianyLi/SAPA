@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument('--model_path', type=str, default='output/', help='model path')
     parser.add_argument('--data_path', type=str, default='data/', help='data path')
     parser.add_argument('--history_path', type=str, default='data/user_history.json', help='history path')
-    parser.add_argument('--device', type=str, default='cuda', help='device') 
+    parser.add_argument('--device', type=str, default='cuda', help='device')
     parser.add_argument('--base_model', type=str, default='meta-llama/Llama-2-7b-chat-hf', help='base model')
     parser.add_argument('--sample_num', type=int, default=None, help='number of samples')
     parser.add_argument('--num_beams', type=int, default=1, help='number of beams')
@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument('--bf16', action='store_true', help='use bf16')
     parser.add_argument('--test_on', type=str, default='function', choices=['function', 'param', 'function_param'], help='test on tool or input')
     parser.add_argument('--max_new_tokens', type=int, default=512, help='max new tokens')
-    
+
     parser.add_argument('--memory_token_length', type=int, default=768, help='memory token length')
     parser.add_argument('--tool_file', type=str, default='data/', help='task file')
     parser.add_argument('--batch_size', type=int, default=4, help='batch size')
@@ -37,9 +37,6 @@ def parse_args():
     parser.add_argument('--single_sample', action='store_true', default=False, help='Run on single sample')
     return parser.parse_args()
 
-
-
-# ... (parse_args 函数保持不变) ...
 
 def batch_inference(model, tokenizer, inputs, labels, batch_size, device, args, max_new_tokens, tasks):
     generation_config = GenerationConfig(
@@ -52,7 +49,7 @@ def batch_inference(model, tokenizer, inputs, labels, batch_size, device, args, 
         do_sample=args.do_sample,
     )
 
-    model.eval()  
+    model.eval()
     with torch.no_grad():
         for i in tqdm(range(0, len(inputs), batch_size), desc='Evaluating batches'):
             batch_inputs = inputs[i:i+batch_size]
@@ -69,7 +66,7 @@ def batch_inference(model, tokenizer, inputs, labels, batch_size, device, args, 
                     batch = batch.to(distributed_state.device)
                     beams = model.generate(batch, generation_config=generation_config)
                     decoded_beams = tokenizer.batch_decode(beams, skip_special_tokens=True)
-                    
+
                     final_batch_results = []
                     if args.test_on == 'function':
                         final_batch_results = [text.strip().split('### Tool:\n')[-1] for text in decoded_beams]
@@ -83,36 +80,32 @@ def batch_inference(model, tokenizer, inputs, labels, batch_size, device, args, 
                             else:
                                 content = text
                             final_batch_results.append(content)
-                    
+
                     res.extend(final_batch_results)
-            
+
             res = gather_object(res)
 
             if distributed_state.is_main_process:
                 for j in range(len(batch_labels)):
                     idx = i + j
                     if idx >= len(tasks): break
-                    
+
                     current_task_id = tasks[idx]
                     current_prompt = batch_inputs[j]
-                    
-                    # 获取该任务的所有模型输出 (如果 num_beams > 1 则有多个)
+
                     task_beams = res[j*args.num_beams:(j+1)*args.num_beams]
-                    
+
                     processed_beams = []
-                    
+
                     processed_beams = task_beams
 
-                    # 最终 result[id] 将会是一个列表，例如 ["ASIN1", "ASIN2", "ASIN3"...]
                     result[current_task_id] = processed_beams
-                    
-                    # 实时输出第一个结果进行调试
+
                     print(f"\n{'='*20} TASK DEBUG {'='*20}")
                     print(f"ID: {current_task_id}")
                     print(f"Top 1 Output: {processed_beams[0] if processed_beams else 'None'}")
                     print(f"Total Rows: {len(processed_beams)}")
-                
-                # 实时保存
+
                 with open(args.res_file, 'w') as f:
                     json.dump(result, f, indent=2)
 
@@ -152,7 +145,7 @@ if __name__ == '__main__':
             torch_dtype=torch_dtype,
             device_map=distributed_state.device
         )
-    
+
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -174,7 +167,6 @@ if __name__ == '__main__':
 
     rec = {'search':[], 'rec':[], 'review':[]}
     result = {}
-    # Resume support: if res_file already has partial results, load them and skip.
     if args.res_file and os.path.exists(args.res_file):
         try:
             with open(args.res_file) as _f:
@@ -194,7 +186,6 @@ if __name__ == '__main__':
             tasks, total_inputs, total_labels = load_param_prompt_beam_search_split_recommend_no_cat(args.data_path, args.tool_file, valid_mode, args.memory_token_length, tokenizer)
         print('Data loaded from '+data_path)
 
-        # Resume: drop tasks that are already in `result`.
         if result:
             keep = [i for i, t in enumerate(tasks) if t not in result]
             if len(keep) < len(tasks) and distributed_state.is_main_process:
@@ -205,12 +196,8 @@ if __name__ == '__main__':
             if not tasks:
                 continue
 
-        print(total_inputs[:2],total_labels[:2])  # 调试：打印前两个输入，检查数据是否正确加载
+        print(total_inputs[:2],total_labels[:2])
 
-        # 判断任务类型
-        # NOTE: was greedy (num_beams=1) for recommend; we now sample 10 candidates
-        # so the eval can do RRF fusion of N seed-based retrievals (matches the
-        # search/review aggregation paradigm).
         if args.single_sample:
             args.num_beams = 1
             args.temperature = 0
@@ -219,19 +206,13 @@ if __name__ == '__main__':
             args.num_beams = 1
             args.temperature = 0
             args.do_sample = False
-        else:  # search / review
+        else:
             args.num_beams = 10
             args.temperature = 1
             args.do_sample = True
-        # args.num_beams = 10
-        # args.temperature = 1
-        # args.do_sample = True
 
         rec = batch_inference(model, tokenizer, total_inputs, total_labels, batch_size, device, args, args.max_new_tokens, tasks)
     with open(args.res_file, 'w') as f:
         json.dump(result, f, indent=2)
-                
 
-          
 
-        

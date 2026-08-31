@@ -21,30 +21,29 @@ def parse_args():
     parser.add_argument('--reflection_file', type=str, default='SAPA/output/full_reflection_log.json', help='详细反思日志')
     return parser.parse_args()
 
-# 加载 Sentence-Transformer
 tokenizer = AutoTokenizer.from_pretrained(os.getenv('PWAB_SIM_MODEL', 'sentence-transformers/all-MiniLM-L6-v2'))
 model = AutoModel.from_pretrained(os.getenv('PWAB_SIM_MODEL', 'sentence-transformers/all-MiniLM-L6-v2'))
 if torch.cuda.is_available():
     model.to('cuda')
 
 def compute_similarity_batch(target_review, agent_reviews_list):
-    """批量计算 Review 相似度以提升效率"""
+    """Compute review similarities in batches."""
     def mean_pooling(model_output, attention_mask):
         token_embeddings = model_output[0]
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-    
+
     sentences = [target_review] + list(agent_reviews_list)
     encoded_input = tokenizer(sentences, padding=True, truncation=True, return_tensors='pt')
     if torch.cuda.is_available():
         encoded_input = {k: v.to('cuda') for k, v in encoded_input.items()}
-    
+
     with torch.no_grad():
         model_output = model(**encoded_input)
-    
+
     sentence_embeddings = mean_pooling(model_output, encoded_input['attention_mask'])
     sentence_embeddings = F.normalize(sentence_embeddings, p=2, dim=1)
-    
+
     target_vec = sentence_embeddings[0:1]
     agent_vecs = sentence_embeddings[1:]
     similarities = F.cosine_similarity(target_vec, agent_vecs, dim=1)
@@ -61,24 +60,21 @@ final_results = {'search':[], 'recommend':[], 'review':[]}
 tool_accuracy = {'search':[], 'recommend':[], 'review':[]}
 full_reflection_logs = []
 
-# ==================== 开始评估 ====================
 for task in tqdm(tasks['test']):
     instruction = task['task']
     if instruction not in tool_selected or instruction not in tool_input:
         continue
-        
+
     tool_pred = tool_selected[instruction][0]
-    # 判定工具类型
     if 'search_product_by_query' in tool_pred:
         task_type = 'search'
     elif 'get_recommendations_by_history' in tool_pred:
         task_type = 'recommend'
     else:
         task_type = 'review'
-        
+
     gt_task_type = task['type']
-    
-    # 1. 工具准确率统计
+
     is_tool_correct = 1 if task_type == gt_task_type else 0
     tool_accuracy[gt_task_type].append(is_tool_correct)
 
@@ -86,11 +82,9 @@ for task in tqdm(tasks['test']):
         final_results[gt_task_type].append(0)
         continue
 
-    # 获取模型生成的 10 条候选
-    candidates = tool_input[instruction] 
+    candidates = tool_input[instruction]
     target_asin = task['target'].get('product_info', {}).get('parent_asin', "")
-    
-    # 初始化当前任务日志
+
     task_log = {
         "instruction": instruction,
         "task_type": gt_task_type,
@@ -99,7 +93,6 @@ for task in tqdm(tasks['test']):
     }
     scores = []
 
-    # ================= 分工具逻辑处理 =================
     if gt_task_type == 'search':
         task_log["target"] = target_asin
         for idx, q in enumerate(candidates):
@@ -126,25 +119,21 @@ for task in tqdm(tasks['test']):
             scores.append(s)
             task_log["candidates_analysis"].append({"rank": idx, "text": h, "score": s})
 
-    else: # review
+    else:
         target_review = task['target']['review']['text']
         task_log["target"] = target_review
         scores = compute_similarity_batch(target_review, candidates)
         for idx, s in enumerate(scores):
             task_log["candidates_analysis"].append({"rank": idx, "text": candidates[idx], "score": s})
 
-    # 取 10 条里最好的存入 final_results
     final_results[gt_task_type].append(max(scores) if scores else 0)
     full_reflection_logs.append(task_log)
 
-# ==================== 保存与统计 ====================
 
-# 1. 保存详细反思日志
 os.makedirs(os.path.dirname(args.reflection_file), exist_ok=True)
 with open(args.reflection_file, 'w', encoding='utf-8') as f:
     json.dump(full_reflection_logs, f, indent=4, ensure_ascii=False)
 
-# 2. 统计 Rank 分布数据
 rank_scores = np.zeros(10)
 rank_wins = np.zeros(10)
 for log in full_reflection_logs:
@@ -156,7 +145,6 @@ for log in full_reflection_logs:
 
 total = len(full_reflection_logs)
 
-# 3. 打印详细统计表
 print("\n" + "="*60)
 print(f"📊 10条候选结果 Rank 质量统计 (样本数: {total})")
 print("="*60)
@@ -165,7 +153,6 @@ for i in range(10):
     dist_table.append([f"Rank {i}", f"{rank_scores[i]/total:.4f}", f"{(rank_wins[i]/total)*100:.2f}%"])
 print(tabulate(dist_table, headers=['排名', '平均分', '最优命中率'], tablefmt='grid'))
 
-# 4. 打印汇总表
 combined_data = [
     ['Search', len(final_results['search']), np.mean(tool_accuracy['search']), np.mean(final_results['search'])],
     ['Recommend', len(final_results['recommend']), np.mean(tool_accuracy['recommend']), np.mean(final_results['recommend'])],

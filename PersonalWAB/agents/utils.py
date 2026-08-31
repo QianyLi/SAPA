@@ -75,8 +75,8 @@ def message_to_dict(message):
         return {"role": "assistant", "function_call": str(message.tool_calls[0].function)}
 
 
-PARAM_PROMPT = '''Below is an instruction that describes a task. Generate a tool parameter that appropriately completes the request. 
-### Instruction: <Insturction> 
+PARAM_PROMPT = '''Below is an instruction that describes a task. Generate a tool parameter that appropriately completes the request.
+### Instruction: <Insturction>
 
 Memory: <Memory>
 
@@ -96,7 +96,7 @@ Main Category: <Main Category>
 
 
 def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[0] 
+    token_embeddings = model_output[0]
     input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
     return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
@@ -144,7 +144,7 @@ def load_input_prompt(instruction, type, product, memory, tokenizer, mem_length)
             memory_text,
             return_tensors=None,
             truncation=True,
-            max_length=mem_length  
+            max_length=mem_length
         )
         truncated_memory_ids = tokenized_memory["input_ids"]
         memory_text_truncated = tokenizer.decode(truncated_memory_ids, skip_special_tokens=True)
@@ -158,12 +158,12 @@ def load_input_prompt(instruction, type, product, memory, tokenizer, mem_length)
             memory_text,
             return_tensors=None,
             truncation=True,
-            max_length=mem_length  
+            max_length=mem_length
         )
         truncated_memory_ids = tokenized_memory["input_ids"]
         memory_text_truncated = tokenizer.decode(truncated_memory_ids, skip_special_tokens=True)
         truncated_full_text = prefix_text.replace('<Memory>', memory_text_truncated).replace('<Tool>', tool_text)
-    
+
     elif task_type == 'review':
         product_text = prettify_product_info(product_info)
         prefix_text = PARAM_PROMPT.replace('<Insturction>', task + product_text)
@@ -173,7 +173,7 @@ def load_input_prompt(instruction, type, product, memory, tokenizer, mem_length)
             memory_text,
             return_tensors=None,
             truncation=True,
-            max_length=mem_length  
+            max_length=mem_length
         )
         truncated_memory_ids = tokenized_memory["input_ids"]
         memory_text_truncated = tokenizer.decode(truncated_memory_ids, skip_special_tokens=True)
@@ -225,11 +225,11 @@ INTEREC_MEMORY_PROMPT = '''
 '''
 
 REFLECTION_INST = """
-You will be given the history of a past experience where you were placed in an environment and given a task to complete. 
-In each attempt, you had the option to call tool and provide specific parameters for that tool. 
+You will be given the history of a past experience where you were placed in an environment and given a task to complete.
+In each attempt, you had the option to call tool and provide specific parameters for that tool.
 Your goal is to reflect on the feedback provided by the user regarding your previous attempt.
-Reflect on the specific tool you selected and the parameters you provided. 
-Think about what went wrong in your decision-making process regarding the tool selection and parameter usage. 
+Reflect on the specific tool you selected and the parameters you provided.
+Think about what went wrong in your decision-making process regarding the tool selection and parameter usage.
 Devise a concise, new plan of action that improves on the mistakes made, with a focus on selecting the right tool and providing the appropriate parameters in future experiences.
 
 Instruction:
@@ -316,7 +316,7 @@ RECMIND_MT_PROPMT = '''As a personalized shopping agent, you can help users sear
 Rules:
 - The user will provide user_id and a request.
 - You need to use the most appropriate tool to find the product or fill the review that matches the user's request.
-- For different requests, you may need to use different tools from search_product_by_query, get_recommendations_by_history or add_product_review. 
+- For different requests, you may need to use different tools from search_product_by_query, get_recommendations_by_history or add_product_review.
 - Correct tool selection and better tool input will help you get better results.
 - You are allowed to interact with the user or make tool calls, but steps are limited to <NUM>, and less steps are preferred.
 - Your main goal is to help the user complete the task as accurately and efficiently as possible, do not keep responding to the user, focus on making the best tool calls.
@@ -354,7 +354,7 @@ User: My history is ITEM-1, ITEM-2, ITEM-3. Now I want something new.
 Assistent: Based on your preference, I recommend you ITEM-17, ITEM-19, ITEM-30.
 User: I don't like those items, give me more options.
 Assistent: Based on your feedbacks, I recommend you ITEM-5, ITEM-100.
-User: I think ITEM-100 may be very interesting. I may like it. 
+User: I think ITEM-100 may be very interesting. I may like it.
 > Profiles
 {"like": ["ITEM-100"], "dislike": ["ITEM-17", "ITEM-19", "ITEM-30"], "expect": []}
 
@@ -368,7 +368,7 @@ User: I don't like those items, I want something new like books.
 {"like": [], "dislike": ["ITEM-10", "ITEM-88", "ITEM-70"], "expect": ["books"]}
 
 Only keep the parent_asin in the like and dislike to represent the product. Expect can contain item names or categories.
-Now extract user profiles from below conversation: 
+Now extract user profiles from below conversation:
 > Conversation
 {conversation}
 '''
@@ -409,7 +409,7 @@ Rules:
 - You are allowed to interact with the user by 'respond' to ask for more information or feedback, but steps are limited to <NUM>, and less steps are preferred.
 - Your main goal is to help the user complete the task as accurately and efficiently as possible, do not keep responding to the user, focus on making the better tool calls.
 - The evaluation will be based on the ranking of the target product in search and recommendation tasks, and the similarity of the review in the review task.
-- When you think you have found the best input for the task tool calls, you can end the task by making a 'stop' call. 
+- When you think you have found the best input for the task tool calls, you can end the task by making a 'stop' call.
 - You should not make up any information or knowledge not provided from the user or the tools, or give subjective comments or recommendations.
 - You should at most make one tool call at a time, and if you take a tool call, you should not respond to the user at the same time. If you respond to the user, you should not make a tool call.
 '''
@@ -426,7 +426,7 @@ def pretty_history(item, num):
     res = res.replace("<DESCRIPTION>", str(item['product_info']['description']))
     res = res.replace("<FEATURES>", str(item['product_info']['features']))
     res = res.replace("<MAIN_CATEGORY>", str(item['product_info']['main_category']))
-    
+
     res = res.replace("<RATING>", str(item['review']['rating']))
     res = res.replace("<TEXT>", item['review']['text'])
     res = res.replace("<TIMESTAMP>", str(item['review']['timestamp']))
@@ -475,9 +475,9 @@ def sup_review_pretty_history(item):
     return res
 
 
-PARAM_PROMPT_SEARCH = '''Below is an instruction that describes a task. Generate the tool parameter that appropriately completes the request. 
+PARAM_PROMPT_SEARCH = '''Below is an instruction that describes a task. Generate the tool parameter that appropriately completes the request.
 ### Instruction:<Instruction>
-  
+
 Memory: <Memory>
 
 Tool: <Tool>
@@ -486,14 +486,14 @@ Tool: <Tool>
 '''
 PARAM_PROMPT_REVIEW = '''Below is an instruction that describes a task. Generate the tool parameter that appropriately completes the request.
 ### Instruction:<Instruction>
-  
+
 Memory: <Memory>
 
 Tool: <Tool>
 
 ### Tool Parameter:
 '''
-PARAM_PROMPT_RECOMMEND = '''Below is an instruction that describes a task. Select the tool parameter (Asin) that appropriately completes the request. 
+PARAM_PROMPT_RECOMMEND = '''Below is an instruction that describes a task. Select the tool parameter (Asin) that appropriately completes the request.
 
 ### Instruction:<Instruction>
 
@@ -507,45 +507,33 @@ Tool: <Tool>
 
 ### Requirement:
 Please select the most suitable item from the "Candidate List" based on the Instruction and History.
-**Output ONLY the Product ID (ASIN) of the selected item.** 
+**Output ONLY the Product ID (ASIN) of the selected item.**
 Do not output the product name, explanations, or any other text.
 
 ### Tool Parameter:
 '''
 
 def retrieve_top_k_memories_score(request, history, model, tokenizer, k=50):
-    # 1. 编码 Query
     request_embedding = encode_texts([request], model, tokenizer)
-    
-    # 2. 编码 History 
-    # 注意：如果你的 history 已经是处理好的字符串列表（如主代码传来的 hist_cand_strs），
-    # 这里可以直接用 history，不需要再调 pretty_history。
-    # 如果 history 还是原始字典列表，则保留 pretty_history。
-    # 假设这里传入的是已经处理好的文本列表：
+
     candidates_text = history
-    # 如果 history 已经是 string，直接用: candidates_text = history
-    
+
     history_embeddings = encode_texts(candidates_text, model, tokenizer)
-    
-    # 3. 计算相似度
+
     similarity = F.cosine_similarity(request_embedding, history_embeddings, dim=1)
-    
-    # 4. 获取 Top K 的索引
-    # 确保 k 不超过历史记录的总数
+
     real_k = min(k, len(history))
     top_k_indices = similarity.argsort(descending=True)[:real_k]
-    
-    # 5. 组装结果 [(content, score), ...]
+
     results = []
     for idx in top_k_indices:
-        idx = idx.item()              # 转为 Python int
-        score = similarity[idx].item() # 转为 Python float
-        content = history[idx]         # 获取对应的内容
+        idx = idx.item()
+        score = similarity[idx].item()
+        content = history[idx]
         results.append((content, score))
-        
+
     torch.cuda.empty_cache()
-    
-    # 返回格式: [("history_text_1", 0.85), ("history_text_2", 0.40), ...]
+
     return results
 
 def build_taskspe_memory(history: list, task_type: str) -> list:
@@ -558,47 +546,36 @@ def build_taskspe_memory(history: list, task_type: str) -> list:
         return []
 
     for item in history:
-        # Safely get the product_info dictionary
         info = item.get('product_info')
         if not isinstance(info, dict):
-            continue  # Skip this item if product_info is missing or invalid
+            continue
 
-        # --- Logic branch based on task_type ---
 
         if task_type == 'search':
-            # For 'search', include details relevant to finding a product
             title = info.get('title', 'N/A')
             category = info.get('main_category', 'N/A')
             price = info.get('price', 'N/A')
             store = info.get('store', 'N/A')
-            # Format into a single, structured string
             mem_string = f"Title: {title} | Category: {category} | Price: ${price} | Store: {store}"
             mem.append(mem_string)
 
         elif task_type == 'recommend':
-            # For 'recommend', focus on identifying features and the item itself
             title = info.get('title', 'N/A')
             category = info.get('main_category', 'N/A')
-            # parent_asin is the best identifier for a product family
             asin = info.get('parent_asin', 'N/A')
             mem_string = f"Title: {title} | Category: {category} | ASIN: {asin}"
             mem.append(mem_string)
 
         elif task_type == 'review':
             user_rating = info.get('rating', 'N/A')
-            # 获取用户评论文本
-            review_text = info.get('text', '').replace('\n', ' ') 
-            
-            # 获取商品标题 (为了检索时能匹配到相似商品)
+            review_text = info.get('text', '').replace('\n', ' ')
+
             title = info.get('title', 'N/A')
-            
-            # 组合字符串：既包含商品名(方便检索相似品)，也包含评论内容(方便模仿风格)
-            # 限制长度：防止单条评论过长撑爆 Prompt
+
             mem_string = f"Product: {title} | User Rating: {user_rating} | Review: {review_text[:200]}"
             mem.append(mem_string)
-            
+
         else:
-            # A fallback for any other task type, just includes the title
             title = info.get('title', 'N/A')
             mem_string = f"Title: {title}"
             mem.append(mem_string)

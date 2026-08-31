@@ -65,8 +65,7 @@ llama_tokenizer = AutoTokenizer.from_pretrained(os.getenv('PWAB_BASE_MODEL', 'me
 if args.evaluate_dpo == 'True':
     all_res = {}
     skipped_count = 0
-    
-    # 遍历任务
+
     for task in tqdm(tasks['train']):
         task_type = task['type']
         instructions = task['task']
@@ -74,14 +73,11 @@ if args.evaluate_dpo == 'True':
         cur_res = {}
         if task_type == 'recommend':
             skipped_count += 1
-            continue 
+            continue
 
-        # --- 【核心修复点】 ---
-        # 1. 首先检查 Key 是否存在
-        # 2. 同时检查这个 Key 对应的值是否为空 (比如是 [])
         if instructions in tool_input and tool_input[instructions]:
-            
-            candidates = tool_input[instructions] # 建议单独拿出来，代码更整洁
+
+            candidates = tool_input[instructions]
 
             if task_type == 'search':
                 for q in candidates:
@@ -90,7 +86,7 @@ if args.evaluate_dpo == 'True':
                     for i in range(len(res)):
                         if target_asin in res[i]:
                             score = 1 - i/len(res)
-                            break      
+                            break
                     cur_res[q] = score
 
             elif task_type == 'review':
@@ -98,21 +94,17 @@ if args.evaluate_dpo == 'True':
                 for r in candidates:
                     similarity = compute_similarity(target_review, r)
                     cur_res[r] = similarity
-            
-            # 只有处理成功的才存入结果
+
             all_res[instructions] = cur_res
         else:
-            # 找不到 Key 或者候选列表是空的
             skipped_count += 1
 
-    # 保存结果
     with open(args.dpo_output, 'w') as f:
         json.dump(all_res, f, indent=2)
-    
+
     print(f"处理完成！成功: {len(all_res)}, 跳过: {skipped_count}")
 else:
     for task in tqdm(tasks['test']):
-        # print("?????????????????",task)
         tool = tool_selected[task['task']][0]
         if tool == 'search_product_by_query':
             task_type = 'search'
@@ -137,7 +129,7 @@ else:
                 for i in range(len(res)):
                     if target_asin in res[i]:
                         score = 1 - i/len(res)
-                        break      
+                        break
         elif task_type == 'recommend':
             history = tool_input[instructions]
             for h in history:

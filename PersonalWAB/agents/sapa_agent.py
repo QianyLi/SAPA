@@ -32,7 +32,6 @@ generation_config = GenerationConfig(
                     num_beams=1,
                     max_new_tokens=256,
                     num_return_sequences=1,
-                    #early_stopping=True,
                     use_cache=True,
                 )
 
@@ -41,8 +40,8 @@ class SAPAAgent(BaseAgent):
         self.sys_prompt = sys_prompt
         self.function_selection_file = json.load(open(function_selection_file))
         self.res_file = json.load(open(res_file)) if res_file is not None else None
-        self.function_param_model = function_param_model  
-        self.tokenizer = tokenizer  
+        self.function_param_model = function_param_model
+        self.tokenizer = tokenizer
         self.max_length = max_length
         self.memory_token_length = memory_token_length
         self.usage = {"completion_tokens": [], "prompt_tokens": [], "total_tokens": []}
@@ -68,7 +67,7 @@ class SAPAAgent(BaseAgent):
         if verbose:
             self.render(1)
         for _ in range(max_steps):
- 
+
             function = self.select_function(env, index)[0]
 
 
@@ -77,7 +76,7 @@ class SAPAAgent(BaseAgent):
             else:
                 obs = self.preprocess_observation(env, index, function, memory_content, self.memory_token_length)
                 function_input = self.generate_function_param_with_llama(obs)
-            
+
             if isinstance(function_input, str) and function_input.startswith('Say:'):
                 action = {"name": "respond", "arguments": {"content": function_input.split('Say: ')[-1]}}
             elif isinstance(function_input, str) and function_input.startswith('stop'):
@@ -92,7 +91,7 @@ class SAPAAgent(BaseAgent):
                     action = {"name": function, "arguments": {"query": function_input}}
                 elif function == "add_product_review":
                     action = {"name": function, "arguments": {"review": function_input}}
-                
+
             for key, value in self.usage.items():
                 if key == 'completion_tokens_details':
                     continue
@@ -125,12 +124,8 @@ class SAPAAgent(BaseAgent):
         return action_acc, res_acc, info
 
     def select_function(self, env, index):
-        # 原始
-        # print("??????????????????",env.tasks[index]['task'])
         function = self.function_selection_file[env.tasks[index]['task']]
-        # may generate by trained llama as well, but we pre-generate to save time
 
-        # 原始
         return function
 
     def generate_function_param_with_llama(self, observation):
@@ -152,7 +147,7 @@ class SAPAAgent(BaseAgent):
 
     def get_messages(self) -> List[Dict[str, str]]:
         return [message_to_dict(message) for message in self.messages]
-    
+
     def retrieve_memory(self, env, index, memory, memory_length):
         if memory == 'taskspe':
             '''Task-spcific Memory (all purchases and reviews)'''
@@ -166,7 +161,7 @@ class SAPAAgent(BaseAgent):
             history = self.build_taskspe_memory(history, task_type)
             mem = "|".join([item for item in history])
             return mem
-        
+
         else:
             return 'none'
 
@@ -177,7 +172,7 @@ class SAPAAgent(BaseAgent):
             history = [sup_search_pretty_history(item) for item in history]
             return history
         elif task_type == 'recommend':
-            history = sorted(history, key=lambda x: x['review']["timestamp"], reverse=True) # to keep the latest items in trucated memory
+            history = sorted(history, key=lambda x: x['review']["timestamp"], reverse=True)
             history = [sup_rec_pretty_history(item) for item in history]
             return history
         elif task_type == 'review':
@@ -196,7 +191,7 @@ class SAPAAgent(BaseAgent):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         return [history[i] for i in top_k]
-    
+
     def preprocess_observation(self, env, index, tool, memory_content, memory_length):
         if tool == "search_product_by_query":
             task_type = "search"
@@ -205,7 +200,7 @@ class SAPAAgent(BaseAgent):
         else:
             task_type = "review"
         input_prompt = load_input_prompt(env.tasks[index]['task'], task_type, env.tasks[index]['target']['product_info'],
-                                            memory_content, self.tokenizer, memory_length) 
+                                            memory_content, self.tokenizer, memory_length)
 
         return input_prompt
 

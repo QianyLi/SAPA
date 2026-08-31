@@ -1,14 +1,4 @@
-"""
-对比 RISE vs function_calling (两者都用 gpt-4o-mini), 单轮 (max_steps=-1).
-测量:
-  - 按任务类型 (search/recommend/review) 分别统计 latency/token/acc
-  - latency 拆成: total / llm / tool(env.step + BM25 + reranker + faiss)
-  - token 精确: prompt / completion / total
-  - cost (USD)
-  - accuracy (action_acc, res_acc)
-
-不修改任何原始 agent/env 文件, 通过 monkey-patch 计时。
-"""
+'Documentation.'
 
 import os
 import sys
@@ -61,7 +51,7 @@ def patch_openai_and_env(env):
 
     restorers = []
 
-    # env.step -> env_step + tool
+
     orig_step = env.step
     def timed_step(action):
         t0 = time.time()
@@ -74,7 +64,7 @@ def patch_openai_and_env(env):
     env.step = timed_step
     restorers.append(lambda: setattr(env, "step", orig_step))
 
-    # openai client -> llm
+
     seen = set()
     for module in (fc_mod, rise_mod):
         c = getattr(module, "client", None)
@@ -96,7 +86,7 @@ def patch_openai_and_env(env):
         cap = c
         restorers.append(lambda c=cap, o=orig_create: setattr(c.chat.completions, "create", o))
 
-    # RISE-internal -> bm25 / rerank / faiss, also added to "tool"
+
     def wrap_method(obj, attr, counter):
         orig = getattr(obj, attr, None)
         if orig is None: return
@@ -315,7 +305,7 @@ def main():
                     choices=["naive", "no"])
     args = ap.parse_args()
 
-    # -- pick task_ids (consistent across strategies) --
+
     from PersonalWAB.envs import get_env
     env_tmp = get_env("pwab", user_mode="no", user_model="gpt-4o-mini",
                       task_split="test", max_steps=-1)

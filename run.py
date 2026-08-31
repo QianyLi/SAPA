@@ -14,7 +14,7 @@ from transformers import LlamaTokenizer, LlamaForCausalLM
 from peft import PeftModel
 import torch
 import time
-# 请确保你的环境中包含 PersonalWAB 相关的包
+
 from PersonalWAB.agents.base import BaseAgent
 from PersonalWAB.envs import get_env
 
@@ -47,14 +47,14 @@ def run(
         if os.path.exists(ckpt_path):
             with open(ckpt_path, "r") as f:
                 finished_tasks = json.load(f)
-                # 兼容处理：检查是否是包含统计信息的列表
+
                 if isinstance(finished_tasks, list) and len(finished_tasks) > 0:
-                    # 过滤掉统计字典（通常没有 task_id）
+
                     for res in finished_tasks:
                         if 'task_id' in res:
                             results.append(res)
                             finished_idxs.append(res["task_id"])
-        
+
         idxs = [idx for idx in idxs if idx not in finished_idxs]
 
         def _run(idx: int) -> dict:
@@ -81,7 +81,7 @@ def run(
                 memory=args.agent_memory,
                 memory_length=args.memory_length,
             )
-            
+
             result = {
                 "task_id": idx,
                 "action_acc": action_acc,
@@ -101,14 +101,13 @@ def run(
                             data = []
                 else:
                     os.makedirs(os.path.dirname(ckpt_path), exist_ok=True)
-                
-                # 如果文件中包含之前的统计头部，建议在追加时小心，这里简单追加到列表
-                # 实际生产中可能需要先剔除旧的统计头，或者最后再统一加
+
+
                 with open(ckpt_path, "w") as f:
                     json.dump(data + [result], f, indent=2)
             return result
 
-        # 注意：如果使用本地模型且显存紧张，建议将 max_workers 设为 1
+
         with ThreadPoolExecutor(max_workers=args.max_concurrency) as executor:
             for res in tqdm(executor.map(_run, idxs), total=len(idxs), desc=f"Trial {i}"):
                 results.append(res)
@@ -136,7 +135,7 @@ def agent_factory(tools_info, sys_prompt, args: argparse.Namespace) -> BaseAgent
                     api_key=os.getenv("OPENAI_API_KEY")
                 )
 
-            return GPTFunctionCallingAgent(tools_info, sys_prompt, model=args.model, 
+            return GPTFunctionCallingAgent(tools_info, sys_prompt, model=args.model,
                                            function_selection_file=args.sapa_function_file, memory_file=args.interec_memory_file)
 
     elif args.agent_strategy == "react" or args.agent_strategy == "react_reflect":
@@ -176,7 +175,7 @@ def agent_factory(tools_info, sys_prompt, args: argparse.Namespace) -> BaseAgent
                 )
 
             return GPTFunctionCallingAgent(tools_info, sys_prompt, model=args.model)
-    
+
     elif args.agent_strategy == "sapa":
         from PersonalWAB.agents.sapa_agent import SAPAAgent
         function_file = args.sapa_function_file
@@ -184,12 +183,11 @@ def agent_factory(tools_info, sys_prompt, args: argparse.Namespace) -> BaseAgent
         if args.sapa_generate == 0:
             '''To save time, simply use pre-generated results to evaluate'''
             return SAPAAgent(function_file, param_file, None, sys_prompt, None)
-        
-        # 修改点：建议将硬编码的路径 'meta-llama/Llama-2-7b-chat-hf' 改为变量或从 args 传入
-        # 如果你的服务器无法访问 HuggingFace，请确保这里填写的是本地绝对路径
+
+
         base_model_path = os.getenv('PWAB_BASE_MODEL', 'meta-llama/Llama-2-7b-chat-hf')
-        # 如果没有本地路径，使用 'meta-llama/Llama-2-7b-chat-hf'
-        
+
+
         llama_model, llama_tokenizer = load_llama_model(args.sapa_model_path, base_model_path, torch.float16)
         return SAPAAgent(function_file, None, llama_model, sys_prompt, llama_tokenizer, max_length=1024, memory_token_length=args.mem_token_length)
     elif args.agent_strategy == "rise":
@@ -212,34 +210,29 @@ global_model = None
 global_tokenizer = None
 
 def load_llama_model(model_path, base_model, torch_dtype):
-    """
-    修复后的模型加载函数：
-    1. 使用 device_map="auto" 自动处理权重加载（解决 Meta tensor 错误）。
-    2. 移除了 .to('cuda')，防止冲突。
-    3. 增加了 Tokenizer 加载的鲁棒性。
-    """
+    'Documentation.'
     global global_model, global_tokenizer
     if global_model is None and global_tokenizer is None:
         print(f"Loading tokenizer...")
         try:
-            # 优先从微调路径加载 tokenizer
+
             global_tokenizer = LlamaTokenizer.from_pretrained(model_path)
         except Exception as e:
             print(f"Failed to load tokenizer from {model_path}, trying base model {base_model}. Error: {e}")
             global_tokenizer = LlamaTokenizer.from_pretrained(base_model)
-        
+
         global_tokenizer.padding_side = "left"
 
         print(f"Loading base model from: {base_model} with device_map='auto'")
-        # 关键修复：添加 device_map="auto"
+
         global_model = LlamaForCausalLM.from_pretrained(
                 base_model,
                 torch_dtype=torch_dtype,
-                device_map="auto", 
+                device_map="auto",
             )
-        
+
         print(f"Loading PEFT adapter from: {model_path}")
-        # 关键修复：PEFT 加载也需要 device_map="auto" (通常它会跟随 base model，但显式指定更安全)
+
         global_model = PeftModel.from_pretrained(
                 global_model,
                 model_path,
@@ -247,36 +240,32 @@ def load_llama_model(model_path, base_model, torch_dtype):
                 device_map="auto",
             )
 
-        # 关键修复：移除 .to('cuda')，因为 device_map="auto" 已经把模型放到了正确的设备上
-        # 如果此时再手动 to('cuda')，会尝试移动 Meta tensor 导致报错
-        # if torch.cuda.is_available():
-        #     global_model.to('cuda')
-            
+
     return global_model, global_tokenizer
 
 
 def calculate_statistics(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     task_types = ["search", "recommend", "review"]
-    
+
     stats = {
         task_type: {
             "action_sum": 0,
             "res_sum": 0,
             "total_count": 0,
-            "interaction_count": 0  
+            "interaction_count": 0
         }
         for task_type in task_types
     }
-    
+
     global_stats = {
         "action_sum": 0,
         "res_sum": 0,
         "total_count": 0,
-        "interaction_count": 0  
+        "interaction_count": 0
     }
 
     for result in results:
-        # 跳过统计头（如果有）
+
         if 'task_id' not in result and 'run_args' in result:
             continue
 
@@ -285,13 +274,13 @@ def calculate_statistics(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         task_type = result.get("info", {}).get("task", {}).get("type")
         if task_type not in task_types:
             continue
-        
-        # 增加安全性检查，防止 completion_tokens 不存在
+
+
         usage = result.get('info', {}).get('usage', {})
         interaction_count = 0
         if usage and 'completion_tokens' in usage:
             interaction_count = len(usage['completion_tokens'])
-            
+
         stats[task_type]["interaction_count"] += interaction_count
         global_stats["interaction_count"] += interaction_count
 
@@ -300,7 +289,7 @@ def calculate_statistics(results: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         if not action_acc_list: action_acc_list = [0]
         if not res_acc_list: res_acc_list = [0]
-        
+
         valid_indexes = [i for i, acc in enumerate(action_acc_list) if acc == 1]
 
         if valid_indexes:
@@ -329,33 +318,33 @@ def calculate_statistics(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         if total_count > 0:
             avg_action_acc = stats[task_type]["action_sum"] / total_count
             avg_res_acc = stats[task_type]["res_sum"] / total_count
-            avg_interaction_times = interaction_count / total_count  
+            avg_interaction_times = interaction_count / total_count
         else:
             avg_action_acc, avg_res_acc, avg_interaction_times = 0, 0, 0
-        
+
         final_stats[task_type] = {
             "total_count": total_count,
             "avg_interaction_times": avg_interaction_times,
-            "avg_action_acc": avg_action_acc,  
-            "avg_res_acc": avg_res_acc  
+            "avg_action_acc": avg_action_acc,
+            "avg_res_acc": avg_res_acc
         }
-    
+
     global_total_count = global_stats["total_count"]
     global_interaction_count = global_stats["interaction_count"]
     if global_total_count > 0:
         global_avg_action_acc = global_stats["action_sum"] / global_total_count
         global_avg_res_acc = global_stats["res_sum"] / global_total_count
-        global_avg_interaction_times = global_interaction_count / global_total_count  
+        global_avg_interaction_times = global_interaction_count / global_total_count
     else:
         global_avg_action_acc, global_avg_res_acc, global_avg_interaction_times = 0, 0, 0
-    
+
     final_stats["overall"] = {
         "total_count": global_total_count,
-        "avg_interaction_times": global_avg_interaction_times, 
+        "avg_interaction_times": global_avg_interaction_times,
         "avg_action_acc": global_avg_action_acc,
         "avg_res_acc": global_avg_res_acc
     }
-    
+
     return final_stats
 
 
@@ -370,7 +359,7 @@ def main():
         type=str,
         default="gpt-4o-mini",
         choices=[
-            # openai api models
+
             "gpt-4-turbo",
             "gpt-4-0125-preview",
             "gpt-4-1106-preview",
@@ -380,7 +369,7 @@ def main():
             "gpt-3.5-turbo-0125",
             "gpt-4o",
             "gpt-4o-mini",
-            # custom models
+
             "finetune/llama",
         ],
     )
@@ -429,7 +418,7 @@ def main():
     parser.add_argument("--seed", type=int, default=2024)
     parser.add_argument("--shuffle", type=int, default=0)
     parser.add_argument("--interec_memory_file", type=str, default=None)
-    
+
     parser.add_argument("--sapa_param_file", type=str, default=None)
     parser.add_argument("--sapa_function_file", type=str, default=None)
     parser.add_argument("--sapa_generate", type=int, default=0)
@@ -443,11 +432,11 @@ def main():
 
     time_str = datetime.now().strftime("%m%d%H%M")
     turn_sig = 'singleturn' if args.max_steps == -1 else 'multiturn'
-    
-    # 清理模型名称字符串，防止路径错误
+
+
     model_name_safe = args.model.split('/')[-1]
     file_str = f'''{args.log_dir}/{turn_sig}/step{args.max_steps}_{args.agent_strategy}-{model_name_safe}-{args.temperature}_mem{args.agent_memory}_range{args.start_index}-{args.end_index}_user{args.user_model}_{time_str}.json'''
-    
+
     if args.resume_from:
         file_str = args.resume_from
         print(f"Resuming from {file_str}")
@@ -455,30 +444,29 @@ def main():
     if not os.path.exists(os.path.dirname(file_str)):
         os.makedirs(os.path.dirname(file_str), exist_ok=True)
 
-    # 运行
+
     results = run(
         args=args,
         ckpt_path=file_str,
     )
 
-    # 统计
+
     final_res = calculate_statistics(results)
     for task_type, stats in final_res.items():
         print(f"\nTask type: {task_type}")
         for key, value in stats.items():
             print(f"{key}: {value}")
 
-    # 计算总成本
+
     total_cost = 0
     for r in results:
-        # 兼容旧数据和新数据，并过滤掉头部统计字典
+
         if 'info' in r and 'usage' in r['info'] and 'total_price' in r['info']['usage']:
             total_cost += r['info']['usage']['total_price']
 
-    # 准备最终结果：头部是统计，后面是详情
-    # 移除之前的统计头（如果有），避免重复叠加
+
     clean_results = [r for r in results if 'task_id' in r]
-    
+
     total = {'run_args': vars(args), 'total cost': total_cost, 'results': final_res}
     clean_results.insert(0, total)
 
